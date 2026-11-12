@@ -38,7 +38,7 @@
           <li>「ライセンス」欄にキーを貼り付けて <strong>保存</strong></li>
           <li>アプリの設定画面右上の <strong>アプリを更新</strong> を押す</li>
         </ol>
-        <p class="meta">同じドメイン内の他のアプリにも同じキーが使えます。このページのURLは後からもう一度開いてキーを表示できます。キーを紛失した場合は下の再発行フォームをお使いください。</p>
+        <p class="meta">同じドメイン内の他のアプリにも同じキーが使えます。このページのURLは後からもう一度開いてキーを表示できるので、ブックマークしておくと便利です。キーを紛失した場合は下の再発行フォームをお使いください。</p>
       </div>
 
       <!-- 読み込み中／エラー -->
@@ -48,6 +48,20 @@
       <div class="license-box" id="error" style="display: none">
         <div class="status err" id="error-msg"></div>
         <p>解決しない場合は <a data-config="contactEmail" href="#">お問い合わせ</a> ください（決済時のメールアドレスとkintoneドメインをお知らせください）。</p>
+      </div>
+
+      <!-- ドメイン修正（購入完了ページのみ） -->
+      <div class="license-box" id="fix" style="display: none; margin-top: 24px">
+        <h3>ドメインを修正する</h3>
+        <p class="meta" id="fix-desc">購入時に入力したkintoneのドメインが間違っていた場合は、ここで正しいドメインを入力すると、そのドメイン用のキーを発行し直します。修正できるのは<strong>購入から7日以内・1回限り・打ち間違いの範囲</strong>（元のドメインと1〜2文字の違い）です（<span id="fix-until"></span>まで）。別の環境への変更はお問い合わせください。</p>
+        <form id="fix-form">
+          <div class="form-row">
+            <label for="fix-domain">正しい kintone のドメイン</label>
+            <input id="fix-domain" type="text" required placeholder="xxxx.cybozu.com（ブラウザのURLを貼り付けても可）" />
+          </div>
+          <button class="btn" type="submit" id="fix-btn">このドメインでキーを発行し直す</button>
+          <div class="status err" id="fix-error" style="display: none; margin-top: 1em"></div>
+        </form>
       </div>
 
       <!-- 再発行フォーム -->
@@ -61,7 +75,7 @@
           </div>
           <div class="form-row">
             <label for="domain">kintone のドメイン</label>
-            <input id="domain" type="text" required placeholder="xxxx.cybozu.com" pattern="[A-Za-z0-9\-]+\.(cybozu\.com|kintone\.com|cybozu\.cn)" />
+            <input id="domain" type="text" required placeholder="xxxx.cybozu.com（ブラウザのURLを貼り付けても可）" />
           </div>
           <button class="btn btn-primary" type="submit" id="reissue-btn">キーを取得する</button>
           <div class="status err" id="reissue-error" style="display: none; margin-top: 1em"></div>
@@ -89,6 +103,8 @@
       var $ = function (id) { return document.getElementById(id); };
       function show(id, on) { $(id).style.display = on ? '' : 'none'; }
 
+      var sid = new URLSearchParams(location.search).get('session_id');
+
       function render(data) {
         $('result-domain').textContent = data.domain;
         $('result-exp').textContent = data.exp;
@@ -97,12 +113,23 @@
         show('loading', false);
         show('error', false);
         show('result', true);
+        renderFix(data.fix);
         $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-      function fail(message) {
+      function fail(message, fixable) {
         $('error-msg').textContent = message;
         show('loading', false);
         show('error', true);
+        if (fixable) renderFix({ allowed: true, until: '' });
+      }
+      // ドメイン修正欄：購入完了ページ（session_id あり）で、修正できる状態のときだけ出す
+      function renderFix(fix) {
+        if (!sid || !fix || !fix.allowed) {
+          show('fix', false);
+          return;
+        }
+        $('fix-until').textContent = fix.until || '購入から7日以内';
+        show('fix', true);
       }
       function request(path, options) {
         return fetch(cfg.licenseApi + path, options)
@@ -119,12 +146,36 @@
       }
 
       // 決済完了ページから来た場合（?session_id=cs_...）
-      var sid = new URLSearchParams(location.search).get('session_id');
       if (sid) {
         $('title').textContent = 'ご購入ありがとうございます';
         show('loading', true);
-        request('/issue?session_id=' + encodeURIComponent(sid)).then(render).catch(function (e) { fail(e.message); });
+        request('/issue?session_id=' + encodeURIComponent(sid))
+          .then(render)
+          .catch(function (e) { fail(e.message, /ドメインが読み取れません/.test(e.message)); });
       }
+
+      // ドメイン修正
+      $('fix-form').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        if (!window.confirm('ドメインの修正は1回限りです。「' + $('fix-domain').value.trim() + '」で発行し直しますか？')) return;
+        var btn = $('fix-btn');
+        btn.disabled = true;
+        show('fix-error', false);
+        request('/fix-domain', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sid, domain: $('fix-domain').value }),
+        })
+          .then(function (data) {
+            $('result-status').textContent = 'ドメインを修正し、ライセンスキーを発行し直しました。';
+            render(data);
+          })
+          .catch(function (e) {
+            $('fix-error').textContent = e.message;
+            show('fix-error', true);
+          })
+          .then(function () { btn.disabled = false; });
+      });
 
       // 再発行
       $('reissue-form').addEventListener('submit', function (ev) {
