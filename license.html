@@ -53,7 +53,7 @@
       <!-- ドメイン修正（購入完了ページのみ） -->
       <div class="license-box" id="fix" style="display: none; margin-top: 24px">
         <h3>ドメインを修正する</h3>
-        <p class="meta" id="fix-desc">購入時に入力したkintoneのドメインが間違っていた場合は、ここで正しいドメインを入力すると、そのドメイン用のキーを発行し直します。修正できるのは<strong>購入から7日以内・1回限り・打ち間違いの範囲</strong>（元のドメインと1〜2文字の違い）です（<span id="fix-until"></span>まで）。別の環境への変更はお問い合わせください。</p>
+        <p class="meta" id="fix-desc">購入時に入力したkintoneのドメインが間違っていた場合や、kintoneのドメインが変わった場合は、ここで正しいドメインを入力すると、そのドメイン用のキーを発行し直します。変更すると、前のドメインのキーは翌日までに停止し、新しいドメインのキーだけが有効になります（変更は24時間に1回まで<span id="fix-until"></span>）。</p>
         <form id="fix-form">
           <div class="form-row">
             <label for="fix-domain">正しい kintone のドメイン</label>
@@ -128,7 +128,7 @@
           show('fix', false);
           return;
         }
-        $('fix-until').textContent = fix.until || '購入から7日以内';
+        $('fix-until').textContent = fix.until ? '、' + fix.until : '';
         show('fix', true);
       }
       function request(path, options) {
@@ -157,7 +157,7 @@
       // ドメイン修正
       $('fix-form').addEventListener('submit', function (ev) {
         ev.preventDefault();
-        if (!window.confirm('ドメインの修正は1回限りです。「' + $('fix-domain').value.trim() + '」で発行し直しますか？')) return;
+        if (!window.confirm('「' + $('fix-domain').value.trim() + '」に変更します。前のドメインのキーは翌日までに使えなくなります。よろしいですか？')) return;
         var btn = $('fix-btn');
         btn.disabled = true;
         show('fix-error', false);
