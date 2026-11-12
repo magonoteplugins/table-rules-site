@@ -1,9 +1,9 @@
 // 配布ページの設定（ここだけ書き換えれば各ページに反映されます）
 window.SITE_CONFIG = {
   // Stripe の支払いリンク（ダッシュボード → 支払いリンク → コピー）
-  paymentLink: 'https://buy.stripe.com/__PAYMENT_LINK__',
+  paymentLink: 'https://buy.stripe.com/4gM5kE1jj6So1Fb6cx6AM00',
   // ライセンス発行サーバー（Cloudflare Worker）の URL。末尾のスラッシュなし
-  licenseApi: 'https://table-rules-license.__ACCOUNT__.workers.dev',
+  licenseApi: 'https://table-rules-license.magonote.workers.dev',
   // 問い合わせ先メールアドレス
   contactEmail: 'magonote.plugins@gmail.com',
   // プラグインの zip（downloads/ に置く）
